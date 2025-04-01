@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>文件分析</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.1.0/github-markdown.min.css" rel="stylesheet">
+    <style>
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h2 class="mb-4">文件分析</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <form id="uploadForm">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">选择文件</label>
+                            <input type="file" class="form-control" id="file" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="prompt" class="form-label">分析提示（可选）</label>
+                            <textarea class="form-control" id="prompt" rows="3" placeholder="请分析这个文件的内容并提供主要观点和结构"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">开始分析</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2">正在分析文件，请稍候...</p>
+            </div>
+            <div id="result" class="markdown-body"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const fileInput = document.getElementById('file');
+        const promptInput = document.getElementById('prompt');
+        const loading = document.querySelector('.loading');
+        const result = document.getElementById('result');
+
+        if (!fileInput.files[0]) {
+            alert('请选择文件');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('prompt', promptInput.value);
+
+        loading.style.display = 'block';
+        result.innerHTML = '';
+
+        try {
+            const response = await fetch('/nexis-ai/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            // 处理JSON格式响应
+            const jsonArray = await response.json();
+
+            if (Array.isArray(jsonArray) && jsonArray.length > 0) {
+                // 将所有片段拼接成完整的Markdown文本
+                const markdownContent = jsonArray.join('');
+
+                // 渲染Markdown内容
+                result.innerHTML = marked.parse(markdownContent);
+            } else {
+                result.innerHTML = '<div class="alert alert-warning">未获取到分析结果</div>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            result.innerHTML = `<div class="alert alert-danger">分析失败: ${error.message}</div>`;
+        } finally {
+            loading.style.display = 'none';
+        }
+    });
+
+    // 配置marked选项
+    marked.setOptions({
+        breaks: true,
+        gfm: true,
+        headerIds: true,
+        smartLists: true
+    });
+</script>
+</body>
+</html> 

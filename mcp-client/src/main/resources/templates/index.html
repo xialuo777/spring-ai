@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Nexis AI 对话助手</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #chat-container {
+            height: 65vh;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .user-message {
+            background: #4361ee;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        .ai-message {
+            background: #f1f3f5;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+        .message-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 5px;
+            text-align: right;
+        }
+        .message.ai-message.streaming {
+            background: #f1f3f5;
+            border-left: 3px solid #4361ee;
+        }
+        #loading {
+            display: none;
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+        }
+        .typing-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #6c757d;
+            border-radius: 50%;
+            margin-right: 3px;
+            animation: typing 1s infinite ease-in-out;
+        }
+        .typing-indicator:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-primary">Nexis AI 对话助手</h2>
+        <p class="text-muted">基于文档上下文的智能问答系统</p>
+    </div>
+
+    <!-- 对话容器 -->
+    <div id="chat-container"></div>
+
+    <!-- 加载状态 -->
+    <div id="loading">
+        <div class="typing-indicator"></div>
+        <div class="typing-indicator"></div>
+        <div class="typing-indicator"></div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="input-group shadow-sm">
+        <input type="text"
+               id="prompt-input"
+               class="form-control border-0 py-3"
+               placeholder="输入您的问题..."
+               aria-label="问题输入"
+               onkeypress="handleEnter(event)">
+        <button class="btn btn-primary px-4"
+                type="button"
+                id="send-button"
+                onclick="sendMessage()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send-fill" viewBox="0 0 16 16">
+                <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.042.028L.06 6.3a.5.5 0 0 0 .342.502l6.644 1.947L9.375 8l-2.329-2.33 1.947-6.644A.5.5 0 0 0 9.7.06l.18-.453a.5.5 0 0 0 .028-.042z"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+    // 生成唯一会话ID
+    const documentId = generateUUID();
+    let eventSource = null;
+    let isWaitingResponse = false;
+    let currentAiMessageId = null;
+
+    // 生成UUID
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0,
+                v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // 处理回车键
+    function handleEnter(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    }
+
+    // 发送消息
+    function sendMessage() {
+        if (isWaitingResponse) return;
+
+        const input = document.getElementById('prompt-input');
+        const prompt = input.value.trim();
+        if (!prompt) return;
+
+        addMessage(prompt, 'user');
+        input.value = '';
+        startLoading();
+        isWaitingResponse = true;
+        currentAiMessageId = 'ai-' + Date.now();
+
+        // 预先创建AI消息容器
+        addMessage('', 'ai');
+        const aiMessageElement = document.getElementById(currentAiMessageId);
+        aiMessageElement.classList.add('streaming');
+
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        const url = `http://localhost:9090/nexis-ai/chat?id=${documentId}&prompt=${encodeURIComponent(prompt)}`;
+        eventSource = new EventSource(url);
+
+        let fullResponse = '';
+        eventSource.onmessage = (event) => {
+            try {
+                if (event.data.trim() === '[DONE]') {
+                    finalizeAiMessage(fullResponse);
+                    return;
+                }
+
+                const response = JSON.parse(event.data);
+                if (response.result?.output?.text) {
+                    fullResponse = response.result.output.text;
+                    updateAiMessage(fullResponse, currentAiMessageId);
+                }
+            } catch (e) {
+                console.error('解析错误:', e);
+                finalizeAiMessage(fullResponse, true);
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('连接错误:', error);
+            finalizeAiMessage(fullResponse, true);
+        };
+    }
+    // 添加消息到界面
+    function addMessage(content, sender) {
+        const container = document.getElementById('chat-container');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        if (sender === 'ai') {
+            messageDiv.id = currentAiMessageId;
+        }
+        messageDiv.innerHTML = formatContent(content);
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = formatTime(new Date());
+
+        messageDiv.appendChild(timeDiv);
+        container.appendChild(messageDiv);
+        container.scrollTop = container.scrollHeight;
+    }
+    // 新增：完成AI消息处理
+    function finalizeAiMessage(content, isError = false) {
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        const aiMessage = document.getElementById(currentAiMessageId);
+        if (aiMessage) {
+            aiMessage.classList.remove('streaming');
+            if (isError && !content) {
+                content = 'AI响应出现错误，请重试';
+            }
+            updateAiMessage(content || '未收到有效响应', currentAiMessageId);
+        }
+
+        stopLoading();
+        isWaitingResponse = false;
+        currentAiMessageId = null;
+    }
+
+    // 修改后的更新消息函数
+    function updateAiMessage(content, messageId) {
+        const messageElement = document.getElementById(messageId);
+        if (!messageElement) return;
+
+        const timeDiv = messageElement.querySelector('.message-time') ||
+            document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = formatTime(new Date());
+
+        messageElement.innerHTML = formatContent(content);
+        messageElement.appendChild(timeDiv);
+
+        document.getElementById('chat-container').scrollTop =
+            document.getElementById('chat-container').scrollHeight;
+    }
+
+    // 格式化内容（防止XSS并处理换行）
+    function formatContent(text) {
+        if (!text) return '';
+        return text.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>')
+            .replace(/\b(https?:\/\/\S+)\b/g, '<a href="$1" target="_blank">$1</a>');
+    }
+
+    // 格式化时间
+    function formatTime(date) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // 加载状态控制
+    function startLoading() {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('send-button').disabled = true;
+    }
+
+    function stopLoading() {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('send-button').disabled = false;
+    }
+
+    // 初始欢迎消息
+    window.onload = function() {
+        setTimeout(() => {
+            addMessage('您好！我是Nexis AI助手，请问有什么可以帮您？', 'ai');
+        }, 500);
+    };
+</script>
+</body>
+</html>

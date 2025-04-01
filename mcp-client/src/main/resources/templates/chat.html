@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Interface</title>
+    <script>
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const messageContainer = document.getElementById('messages');
+            const prompt = input.value.trim();
+
+            if (!prompt) return;
+
+            // 使用 EventSource 处理流式数据
+            const eventSource = new EventSource(`/nexis-ai/chat?id=default-id&prompt=${encodeURIComponent(prompt)}`);
+            let currentMessageElement = null;
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    // 修改解析逻辑，直接获取 content 字段
+                    const content = data.content || '';
+
+                    // 如果当前消息元素不存在，则创建一个新的消息容器
+                    if (!currentMessageElement) {
+                        currentMessageElement = document.createElement('div');
+                        messageContainer.appendChild(currentMessageElement);
+                    }
+
+                    // 动态追加内容到消息容器
+                    if (content) {
+                        currentMessageElement.textContent += content;
+                        messageContainer.scrollTop = messageContainer.scrollHeight; // 自动滚动到底部
+                    }
+
+                    // 如果流结束，关闭连接
+                    if (data.finishReason === 'STOP') {
+                        eventSource.close();
+                    }
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('EventSource failed:', error);
+                eventSource.close();
+                const errorMessage = document.createElement('div');
+                errorMessage.textContent = '无法获取响应';
+                errorMessage.style.color = 'red';
+                messageContainer.appendChild(errorMessage);
+            };
+
+            input.value = '';
+        }
+    </script>
+</head>
+<body>
+    <h1>Chat with AI</h1>
+    <div id="messages" style="border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll;">
+        <!-- Messages will appear here -->
+    </div>
+    <input type="text" id="userInput" placeholder="输入消息..." />
+    <button onclick="sendMessage()">发送</button>
+</body>
+</html>
