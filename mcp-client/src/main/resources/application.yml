@@ -6,7 +6,7 @@ spring:
     suffix: .html
   ai:
     openai:
-      api-key: sk-12ec0e7dab454d2dbf7829670c001ddc
+      api-key: sk-4410a74452d245ddbcfac50318840b79
       base-url: https://api.deepseek.com
       chat:
         options:
