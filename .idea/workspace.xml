@@ -4,9 +4,17 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fb25af50-3451-4e4f-8c62-ebdf1bfe0400" name="Changes" comment="">
+    <list default="true" id="fb25af50-3451-4e4f-8c62-ebdf1bfe0400" name="Changes" comment="1">
+      <change afterPath="$PROJECT_DIR$/mcp-client/src/main/resources/static/images/robot.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mcp-client/src/main/resources/static/images/user.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mcp-client/src/main/resources/static/index.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mcp-client/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/java/com/ai/mcpclient/controller/ClientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/mcp-client/src/main/java/com/ai/mcpclient/controller/ClientController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/static/analyze.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/static/chat.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/templates/chat.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/templates/file-analysis.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/mcp-client/src/main/resources/templates/index.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,23 +65,26 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "E:/ccbft/SpringAi/mcp-demo",
+    "last_opened_file_path": "E:/ccbft/SpringAi/mcp-demo/mcp-client/src/main/resources/static",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.2",
     "settings.editor.selected.configurable": "reference.settings.project.maven.importing",
     "spring.configuration.checksum": "d39aa5eb40cbbe31e69e2e3815ba7aa5",
+    "two.files.diff.last.used.file": "E:/ccbft/SpringAi/mcp-demo/mcp-client/src/main/resources/index.html",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="E:\ccbft\SpringAi\mcp-demo\mcp-client\src\main\resources\templates" />
+      <recent name="E:\ccbft\SpringAi\mcp-demo\mcp-client\src\main\resources\static" />
       <recent name="E:\ccbft\SpringAi\mcp-demo\mcp-client\src\main\resources" />
+      <recent name="E:\ccbft\SpringAi\mcp-demo\mcp-client\src\main\resources\templates" />
     </key>
   </component>
   <component name="RunManager" selected="Spring Boot.McpClientApplication">
@@ -101,8 +112,16 @@
       <option name="presentableId" value="Default" />
       <updated>1743488114965</updated>
       <workItem from="1743488116290" duration="16016000" />
-      <workItem from="1744027849722" duration="441000" />
+      <workItem from="1744027849722" duration="2701000" />
     </task>
+    <task id="LOCAL-00001" summary="1">
+      <created>1744028315396</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1744028315396</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -118,5 +137,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="1" />
+    <option name="LAST_COMMIT_MESSAGE" value="1" />
   </component>
 </project>
