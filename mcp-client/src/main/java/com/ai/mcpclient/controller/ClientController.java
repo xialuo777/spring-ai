@@ -1,19 +1,21 @@
 package com.ai.mcpclient.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import reactor.core.publisher.Flux;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/nexis-ai")
@@ -22,43 +24,63 @@ public class ClientController {
     @Autowired
     private ChatClient chatClient;
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private final ChatMemory chatMemory = new InMemoryChatMemory();
 
-    @GetMapping("/chat")
-    public SseEmitter chat( @RequestParam(defaultValue = "今天天气如何？") String message) {
-        // 创建 SSE 发射器，设置超时时间（例如 1 分钟）
-        SseEmitter emitter = new SseEmitter(60_000L);
-//        var messageChatMemoryAdvisor = new MessageChatMemoryAdvisor(chatMemory, documentId, 10);
-        String response = chatClient.prompt(message)
-//                .advisors(messageChatMemoryAdvisor)
-                .call()
-                .content();
-        // 发送 SSE 事件
-        try {
-            emitter.send(SseEmitter.event()
-                    .data(response)
-                    .id(String.valueOf(System.currentTimeMillis()))
-                    .build());
-        } catch (Exception e) {
-            emitter.completeWithError(e);
-        }
-        emitter.complete();
-        System.out.println("响应结果: " + response);
+
+    // 流式对话接口
+    @GetMapping(value = "/chat", produces = "text/event-stream")
+    public ResponseBodyEmitter streamChat(
+            @RequestParam("documentId") String documentId,
+            @RequestParam("prompt") String prompt) {
+
+        ResponseBodyEmitter emitter = new ResponseBodyEmitter();
+
+        chatClient.prompt(prompt)
+                .advisors(new MessageChatMemoryAdvisor(chatMemory, documentId, 10))
+                .stream()
+                .chatResponse()
+                .subscribe(
+                        chatResponse -> sendSSEData(emitter, "message", chatResponse),
+                        error -> handleError(emitter, error),
+                        () -> completeRequest(emitter)
+                );
+
         return emitter;
     }
 
-//    /**
-//     * 对话API
-//     */
-//    @GetMapping("/chat")
-//    public Flux<ChatResponse> generateStream(@RequestParam(value = "id") String documentId,
-//                                             @RequestParam(value = "prompt") String prompt) {
-//
-//        var messageChatMemoryAdvisor = new MessageChatMemoryAdvisor(chatMemory, documentId, 10);
-//        return this.chatClient.prompt(prompt)
-//                .advisors(messageChatMemoryAdvisor)
-//                .stream()
-//                .chatResponse();
-//    }
+    private void sendSSEData(ResponseBodyEmitter emitter, String event, Object data) {
+        try {
+            String json = objectMapper.writeValueAsString(data);
+            String formatted = String.format("event: %s\ndata: %s\n\n", event, json);
+            emitter.send(formatted);
+        } catch (JsonProcessingException e) {
+            handleError(emitter, new Exception("数据序列化失败", e));
+        } catch (IOException e) {
+            handleError(emitter, e);
+        }
+    }
 
+    private void handleError(ResponseBodyEmitter emitter, Throwable error) {
+        try {
+            String errorData = objectMapper.writeValueAsString(
+                    Map.of("error", error.getMessage())
+            );
+            emitter.send("event: error\ndata: " + errorData + "\n\n");
+        } catch (Exception e) {
+            emitter.completeWithError(e);
+        } finally {
+            completeRequest(emitter);
+        }
+    }
+
+    private void completeRequest(ResponseBodyEmitter emitter) {
+        try {
+            emitter.send("event: complete\ndata: {}\n\n");
+            emitter.complete();
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
+    }
 }
